@@ -24,3 +24,13 @@ pub async fn login_handler() -> WebResult<impl Reply> {
         refresh_token: String::from("uuid-12345"),
     }))
 }
+
+#[derive(Serialize)]
+struct UserResponse {
+    pub user_id: String,
+}
+pub async fn me_handler() -> WebResult<impl Reply> {
+    Ok(reply::json(&UserResponse {
+        user_id: String::from("uuid-12345"),
+    }))
+}
