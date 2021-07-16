@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::iam::{repos::user_repo::UserRepository, types::user::User};
 
 pub struct CreateUserDTO {
@@ -9,6 +11,15 @@ pub struct CreateUserDTO {
 pub enum CreateUserError {
     WeakPasswordError(String),
     UserAlreadyExistError,
+}
+
+impl fmt::Display for CreateUserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CreateUserError::UserAlreadyExistError => write!(f, "User already exist"),
+            CreateUserError::WeakPasswordError(msg) => write!(f, "{}", msg),
+        }
+    }
 }
 
 pub fn execute(

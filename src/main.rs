@@ -3,6 +3,7 @@ use warp::Filter;
 use crate::infra::http::v1;
 use std::env;
 
+mod common;
 mod iam;
 mod infra;
 

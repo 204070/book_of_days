@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
+use crate::common::handle_reply::{reply, WebResult};
 use serde::{Deserialize, Serialize};
-use warp::{hyper::StatusCode, reply, Rejection, Reply};
+use warp::hyper::StatusCode;
 
 use super::{repos::user_repo::TestUserRepo, use_cases::create_user};
-
-type WebResult<T> = std::result::Result<T, Rejection>;
 
 #[derive(Deserialize)]
 pub struct SignupRequest {
@@ -18,7 +15,7 @@ struct SignupResponse {
     pub user_id: String,
 }
 
-pub async fn signup_handler(body: SignupRequest) -> WebResult<impl Reply> {
+pub async fn signup_handler(body: SignupRequest) -> WebResult {
     let user_repo = TestUserRepo::new();
     let user_dto = create_user::CreateUserDTO {
         username: body.username,
@@ -26,31 +23,14 @@ pub async fn signup_handler(body: SignupRequest) -> WebResult<impl Reply> {
     };
 
     let response = match create_user::execute(&user_dto, &user_repo) {
-        Ok(user) => Ok(reply::with_status(
-            reply::json(&SignupResponse {
+        Ok(user) => Ok(reply(
+            String::from("User Created"),
+            &SignupResponse {
                 user_id: user.user_id.to_string(),
-            }),
+            },
             StatusCode::CREATED,
         )),
-
-        Err(e) => match e {
-            create_user::CreateUserError::WeakPasswordError(msg) => Ok(reply::with_status(
-                reply::json(
-                    &vec![("message", msg)]
-                        .into_iter()
-                        .collect::<HashMap<&str, String>>(),
-                ),
-                StatusCode::BAD_REQUEST,
-            )),
-            create_user::CreateUserError::UserAlreadyExistError => Ok(reply::with_status(
-                reply::json(
-                    &vec![("message", "Username already exist")]
-                        .into_iter()
-                        .collect::<HashMap<&str, &str>>(),
-                ),
-                StatusCode::BAD_REQUEST,
-            )),
-        },
+        Err(e) => Ok(reply(format!("{}", e), {}, StatusCode::BAD_REQUEST)),
     };
 
     response
@@ -61,19 +41,27 @@ struct LoginResponse {
     access_token: String,
     refresh_token: String,
 }
-pub async fn login_handler() -> WebResult<impl Reply> {
-    Ok(reply::json(&LoginResponse {
-        access_token: String::from("uuid-12345"),
-        refresh_token: String::from("uuid-12345"),
-    }))
+pub async fn login_handler() -> WebResult {
+    Ok(reply(
+        String::from("New Access Token created"),
+        &LoginResponse {
+            access_token: String::from("uuid-12345"),
+            refresh_token: String::from("uuid-12345"),
+        },
+        StatusCode::NOT_IMPLEMENTED,
+    ))
 }
 
 #[derive(Serialize)]
 struct UserResponse {
     pub user_id: String,
 }
-pub async fn me_handler() -> WebResult<impl Reply> {
-    Ok(reply::json(&UserResponse {
-        user_id: String::from("uuid-12345"),
-    }))
+pub async fn me_handler() -> WebResult {
+    Ok(reply(
+        String::from("User Fetched"),
+        &UserResponse {
+            user_id: String::from("uuid-12345"),
+        },
+        StatusCode::NOT_IMPLEMENTED,
+    ))
 }
