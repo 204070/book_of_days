@@ -20,6 +20,7 @@
 				}
 			},
 			"args": [],
+			"env": {"RUST_LOG": "warp::server"},
 			"cwd": "${workspaceFolder}"
 		},
 		{
