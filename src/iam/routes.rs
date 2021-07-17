@@ -1,10 +1,12 @@
 use warp::filters::BoxedFilter;
 use warp::{body, path, Filter, Reply};
 
+use crate::common::middleware::auth_middleware::with_auth;
+
 use super::handlers::{login_handler, me_handler, signup_handler};
 
 pub fn iam_router() -> BoxedFilter<(impl Reply,)> {
-    iam_prefix().and(signup().or(login().or(me()))).boxed()
+    iam_prefix().and(signup().or(login()).or(me())).boxed()
 }
 
 fn iam_prefix() -> BoxedFilter<()> {
@@ -13,7 +15,8 @@ fn iam_prefix() -> BoxedFilter<()> {
 
 // POST /users/
 fn signup() -> BoxedFilter<(impl Reply,)> {
-    warp::post()
+    path::end()
+        .and(warp::post())
         .and(body::json())
         .and_then(signup_handler)
         .boxed()
@@ -21,13 +24,18 @@ fn signup() -> BoxedFilter<(impl Reply,)> {
 
 // POST /users/login
 fn login() -> BoxedFilter<(impl Reply,)> {
-    warp::post()
-        .and(path("login"))
+    path("login")
+        .and(warp::post())
+        .and(body::json())
         .and_then(login_handler)
         .boxed()
 }
 
 // GET /users/me
 fn me() -> BoxedFilter<(impl Reply,)> {
-    warp::get().and(path("me")).and_then(me_handler).boxed()
+    warp::get()
+        .and(path("me"))
+        .and(with_auth())
+        .and_then(me_handler)
+        .boxed()
 }

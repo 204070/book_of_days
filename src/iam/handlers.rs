@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-
+use crate::common::handle_reply::{reply, WebResult};
 use serde::{Deserialize, Serialize};
-use warp::{hyper::StatusCode, reply, Rejection, Reply};
+use warp::hyper::StatusCode;
 
-use super::{repos::user_repo::TestUserRepo, use_cases::create_user};
-
-type WebResult<T> = std::result::Result<T, Rejection>;
+use super::{
+    repos::user_repo::TestUserRepo,
+    use_cases::{create_user, generate_auth_tokens},
+};
 
 #[derive(Deserialize)]
 pub struct SignupRequest {
@@ -18,7 +18,7 @@ struct SignupResponse {
     pub user_id: String,
 }
 
-pub async fn signup_handler(body: SignupRequest) -> WebResult<impl Reply> {
+pub async fn signup_handler(body: SignupRequest) -> WebResult {
     let user_repo = TestUserRepo::new();
     let user_dto = create_user::CreateUserDTO {
         username: body.username,
@@ -26,54 +26,63 @@ pub async fn signup_handler(body: SignupRequest) -> WebResult<impl Reply> {
     };
 
     let response = match create_user::execute(&user_dto, &user_repo) {
-        Ok(user) => Ok(reply::with_status(
-            reply::json(&SignupResponse {
+        Ok(user) => Ok(reply(
+            String::from("User Created"),
+            &SignupResponse {
                 user_id: user.user_id.to_string(),
-            }),
+            },
             StatusCode::CREATED,
         )),
+        Err(e) => Ok(reply(e.to_string(), {}, StatusCode::BAD_REQUEST)),
+    };
 
-        Err(e) => match e {
-            create_user::CreateUserError::WeakPasswordError(msg) => Ok(reply::with_status(
-                reply::json(
-                    &vec![("message", msg)]
-                        .into_iter()
-                        .collect::<HashMap<&str, String>>(),
-                ),
-                StatusCode::BAD_REQUEST,
-            )),
-            create_user::CreateUserError::UserAlreadyExistError => Ok(reply::with_status(
-                reply::json(
-                    &vec![("message", "Username already exist")]
-                        .into_iter()
-                        .collect::<HashMap<&str, &str>>(),
-                ),
-                StatusCode::BAD_REQUEST,
-            )),
-        },
+    response
+}
+
+#[derive(Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+#[derive(Serialize)]
+struct LoginResponse {
+    access_token: String,
+    refresh_token: String,
+}
+pub async fn login_handler(body: LoginRequest) -> WebResult {
+    let user_repo = TestUserRepo::new();
+    let login_dto = generate_auth_tokens::GenerateAuthTokensDTO {
+        username: body.username,
+        password: body.password,
+    };
+
+    let response = match generate_auth_tokens::execute(&login_dto, &user_repo) {
+        Ok(tokens) => Ok(reply(
+            String::from("Auth Token Generated"),
+            &LoginResponse {
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+            },
+            StatusCode::CREATED,
+        )),
+        Err(e) => Ok(reply(e.to_string(), {}, StatusCode::BAD_REQUEST)),
     };
 
     response
 }
 
 #[derive(Serialize)]
-struct LoginResponse {
-    access_token: String,
-    refresh_token: String,
-}
-pub async fn login_handler() -> WebResult<impl Reply> {
-    Ok(reply::json(&LoginResponse {
-        access_token: String::from("uuid-12345"),
-        refresh_token: String::from("uuid-12345"),
-    }))
-}
-
-#[derive(Serialize)]
 struct UserResponse {
     pub user_id: String,
+    pub username: String,
 }
-pub async fn me_handler() -> WebResult<impl Reply> {
-    Ok(reply::json(&UserResponse {
-        user_id: String::from("uuid-12345"),
-    }))
+pub async fn me_handler(username: String) -> WebResult {
+    Ok(reply(
+        String::from("User Fetched"),
+        &UserResponse {
+            user_id: String::from("uuid-12345"),
+            username,
+        },
+        StatusCode::OK,
+    ))
 }

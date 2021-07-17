@@ -1,4 +1,4 @@
-use bcrypt::hash;
+use bcrypt::{hash, verify};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -58,11 +58,11 @@ impl HashedPassword {
         password.len() > 7
     }
 
-    // pub fn compare(&self, plain_password: &str) -> bool {
-    //     let valid = match verify(plain_password, &self.value) {
-    //         Ok(v) => v,
-    //         Err(_) => false, // TODO: Log Comparison Error
-    //     };
-    //     valid
-    // }
+    pub fn compare(&self, plain_password: &str) -> bool {
+        let valid = match verify(plain_password, &self.value) {
+            Ok(v) => v,
+            Err(_) => false, // TODO: Log Comparison Error
+        };
+        valid
+    }
 }
