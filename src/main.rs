@@ -1,7 +1,6 @@
-use common::middleware::rejection_handler::handle_rejection;
+use infra::http::{middleware::rejection_handler::handle_rejection, v1};
 use warp::Filter;
 
-use crate::infra::http::v1;
 use std::env;
 
 mod common;

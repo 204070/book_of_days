@@ -1,7 +1,7 @@
 use warp::filters::BoxedFilter;
 use warp::{body, path, Filter, Reply};
 
-use crate::common::middleware::auth_middleware::with_auth;
+use crate::infra::http::middleware::auth_middleware::with_auth;
 
 use super::handlers::{login_handler, me_handler, signup_handler};
 
