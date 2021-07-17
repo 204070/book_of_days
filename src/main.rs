@@ -1,3 +1,4 @@
+use common::middleware::rejection_handler::handle_rejection;
 use warp::Filter;
 
 use crate::infra::http::v1;
@@ -14,7 +15,9 @@ extern crate pretty_env_logger;
 async fn main() {
     pretty_env_logger::init();
 
-    let v1 = v1::v1_router().with(warp::log("warp::server"));
+    let v1 = v1::v1_router()
+        .with(warp::log("warp::server"))
+        .recover(handle_rejection);
 
     let default_port = 7878;
     let port = match env::var("PORT") {

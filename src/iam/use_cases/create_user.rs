@@ -9,15 +9,15 @@ pub struct CreateUserDTO {
 
 #[derive(Debug)]
 pub enum CreateUserError {
-    WeakPasswordError(String),
-    UserAlreadyExistError,
+    WeakPassword(String),
+    UserAlreadyExist,
 }
 
 impl fmt::Display for CreateUserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CreateUserError::UserAlreadyExistError => write!(f, "User already exist"),
-            CreateUserError::WeakPasswordError(msg) => write!(f, "{}", msg),
+            CreateUserError::UserAlreadyExist => write!(f, "User already exist"),
+            CreateUserError::WeakPassword(msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -27,12 +27,10 @@ pub fn execute(
     user_repo: &impl UserRepository,
 ) -> Result<User, CreateUserError> {
     if user_repo.get_by_username(&req.username) != None {
-        return Err(CreateUserError::UserAlreadyExistError);
+        return Err(CreateUserError::UserAlreadyExist);
     }
-    let user = match User::new(&req.username, &req.password) {
-        Ok(user) => user,
-        Err(e) => return Err(CreateUserError::WeakPasswordError(e)),
-    };
+    let user =
+        User::new(&req.username, &req.password).map_err(|e| CreateUserError::WeakPassword(e))?;
 
     user_repo.save(&user);
 
@@ -73,7 +71,7 @@ mod create_user_tests {
 
         let result = result.unwrap_err();
         assert!(match result {
-            CreateUserError::WeakPasswordError(_) => true,
+            CreateUserError::WeakPassword(_) => true,
             _ => panic!("Error not correct"),
         });
     }
@@ -91,7 +89,7 @@ mod create_user_tests {
 
         let result = result.unwrap_err();
         assert!(match result {
-            CreateUserError::UserAlreadyExistError => true,
+            CreateUserError::UserAlreadyExist => true,
             _ => panic!("Error not correct"),
         });
     }

@@ -1,5 +1,6 @@
 pub mod handlers;
-pub mod routes;
-pub mod types;
 mod repos;
+pub mod routes;
+pub mod services;
+pub mod types;
 pub mod use_cases;
