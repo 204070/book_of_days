@@ -2,7 +2,8 @@ use warp::filters::BoxedFilter;
 use warp::{Filter, Reply};
 
 use crate::iam::routes::iam_router;
+use crate::telephony::routes::chat_router;
 
 pub fn v1_router() -> BoxedFilter<(impl Reply,)> {
-    warp::path("v1").and(iam_router()).boxed()
+    warp::path("v1").and(iam_router().or(chat_router())).boxed()
 }

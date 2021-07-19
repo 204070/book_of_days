@@ -6,6 +6,7 @@ use std::env;
 mod common;
 mod iam;
 mod infra;
+mod telephony;
 
 extern crate log;
 extern crate pretty_env_logger;

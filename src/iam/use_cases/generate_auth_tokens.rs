@@ -41,6 +41,8 @@ pub fn execute(
         Some(user) => user,
         None => return Err(GenerateAuthTokensError::UserDoesNotExist),
     };
+    // TODO if guest, create throwaway account
+
     // Compare Password
     let password_valid = user.password.compare(&req.password);
     if password_valid == false {
