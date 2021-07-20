@@ -1,4 +1,6 @@
-use std::cell::RefCell;
+use once_cell::sync::Lazy;
+
+use std::sync::Mutex;
 
 use crate::iam::types::user::User;
 
@@ -8,30 +10,29 @@ pub trait UserRepository {
     fn get_by_username(&self, user_name: &str) -> Option<User>;
 }
 
-pub struct TestUserRepo {
-    users: RefCell<Vec<User>>,
-}
+static USERS: Lazy<Mutex<Vec<User>>> =
+    Lazy::new(|| Mutex::new(vec![User::new("204070", "Pa55w0rd").unwrap()]));
+
+pub struct TestUserRepo {}
 
 impl TestUserRepo {
     pub fn new() -> TestUserRepo {
-        TestUserRepo {
-            users: RefCell::new(vec![User::new("204070", "Pa55w0rd").unwrap()]),
-        }
+        TestUserRepo {}
     }
 }
 
 impl UserRepository for TestUserRepo {
     fn save(&self, user: &User) {
-        self.users.borrow_mut().push(user.clone());
+        USERS.lock().unwrap().push(user.clone());
     }
     fn exist(&self, user: &User) -> bool {
-        self.users.borrow().contains(&user)
+        USERS.lock().unwrap().contains(&user)
     }
 
     fn get_by_username(&self, username: &str) -> Option<User> {
-        let user = self
-            .users
-            .borrow_mut()
+        let user = USERS
+            .lock()
+            .unwrap()
             .clone()
             .into_iter()
             .find(|user| user.username == username);
