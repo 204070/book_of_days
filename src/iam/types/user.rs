@@ -5,7 +5,7 @@ use uuid::Uuid;
 #[derive(Clone, Debug)]
 pub struct User {
     pub username: String,
-    pub user_id: Uuid,
+    pub id: Uuid,
     pub password: HashedPassword,
     last_login_time: String,
     last_login_ip: String,
@@ -23,7 +23,7 @@ impl User {
         Ok(User {
             username,
             password,
-            user_id: Uuid::new_v4(),
+            id: Uuid::new_v4(),
             last_login_time: Utc::now().to_rfc3339(),
             last_login_ip: String::from("0.0.0.0"),
         })
@@ -32,7 +32,7 @@ impl User {
 
 impl PartialEq for User {
     fn eq(&self, other: &Self) -> bool {
-        self.user_id == other.user_id
+        self.id == other.id
     }
 }
 

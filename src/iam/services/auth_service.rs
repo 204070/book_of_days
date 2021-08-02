@@ -11,14 +11,14 @@ pub struct Claims {
 }
 pub type JWTToken = String;
 
-pub fn sign_jwt(username: &String) -> Result<JWTToken, Error> {
+pub fn sign_jwt(user_id: &String) -> Result<JWTToken, Error> {
     let expiration = Utc::now()
         .checked_add_signed(chrono::Duration::minutes(15))
         .expect("valid timestamp")
         .timestamp();
 
     let claims = Claims {
-        sub: username.clone(),
+        sub: user_id.clone(),
         exp: expiration as usize,
     };
     let header = Header::new(Algorithm::HS512);

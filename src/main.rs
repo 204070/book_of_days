@@ -1,21 +1,29 @@
+use dotenv::dotenv;
 use infra::http::{middleware::rejection_handler::handle_rejection, v1};
-use warp::Filter;
-
 use std::env;
+use warp::Filter;
 
 mod common;
 mod iam;
 mod infra;
 mod telephony;
 
+extern crate dotenv;
 extern crate log;
 extern crate pretty_env_logger;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     pretty_env_logger::init();
 
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_headers(vec!["Authorization", "Content-Type"])
+        .allow_methods(vec!["POST", "GET"]);
+
     let v1 = v1::v1_router()
+        .with(cors)
         .with(warp::log("warp::server"))
         .recover(handle_rejection);
 

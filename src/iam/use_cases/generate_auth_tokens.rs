@@ -49,7 +49,7 @@ pub fn execute(
         return Err(GenerateAuthTokensError::PasswordDoesNotMatch);
     }
     // If password match, generate jwt and refresh tokens
-    let access_token = auth_service::sign_jwt(&user.username)
+    let access_token = auth_service::sign_jwt(&user.id.to_string())
         .map_err(|_| GenerateAuthTokensError::UnexpectedError)?;
     let refresh_token = String::from("refresh_token");
     Ok(GenerateAuthTokensDTOResponse {

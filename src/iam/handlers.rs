@@ -4,7 +4,7 @@ use warp::hyper::StatusCode;
 
 use super::{
     repos::user_repo::TestUserRepo,
-    use_cases::{create_user, generate_auth_tokens},
+    use_cases::{create_user, fetch_current_user, generate_auth_tokens},
 };
 
 #[derive(Deserialize)]
@@ -29,7 +29,7 @@ pub async fn signup_handler(body: SignupRequest) -> WebResult {
         Ok(user) => Ok(reply(
             String::from("User Created"),
             &SignupResponse {
-                user_id: user.user_id.to_string(),
+                user_id: user.id.to_string(),
             },
             StatusCode::CREATED,
         )),
@@ -76,13 +76,20 @@ struct UserResponse {
     pub user_id: String,
     pub username: String,
 }
-pub async fn me_handler(username: String) -> WebResult {
-    Ok(reply(
-        String::from("User Fetched"),
-        &UserResponse {
-            user_id: String::from("uuid-12345"),
-            username,
-        },
-        StatusCode::OK,
-    ))
+pub async fn me_handler(user_id: String) -> WebResult {
+    let user_repo = TestUserRepo::new();
+    let fetch_current_user_dto = fetch_current_user::FetchCurrentUserDTO { user_id };
+    let response = match fetch_current_user::execute(&fetch_current_user_dto, &user_repo) {
+        Ok(user) => Ok(reply(
+            String::from("Loggedin user data fetched"),
+            &UserResponse {
+                user_id: user.user_id,
+                username: user.username,
+            },
+            StatusCode::OK,
+        )),
+        Err(e) => Ok(reply(e.to_string(), {}, StatusCode::BAD_REQUEST)),
+    };
+
+    response
 }

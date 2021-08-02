@@ -1,86 +1,98 @@
-use std::{
-    collections::HashMap,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, Mutex,
-    },
-};
+use serde::{Deserialize, Serialize};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use futures::{Stream, StreamExt};
 use tokio::sync::mpsc;
-use warp::sse::{self, Event};
+use warp::{
+    hyper::StatusCode,
+    sse::{self, Event},
+};
 
-use crate::common::handle_reply::WebResult;
+use crate::common::handle_reply::{reply, WebResult};
 
-/// Our global unique user id counter.
-static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
+use super::{
+    repos::message_repo::TestMessageRepo,
+    types::{message::Message, Client, Users},
+};
 
-/// Message variants.
-#[derive(Debug)]
-pub enum Message {
-    UserId(usize),
-    Reply(String),
+#[derive(Deserialize)]
+pub struct SendMessageRequest {
+    pub message_type: String,
+    pub sent_at: String,
+    pub value: String,
+    pub to: Option<String>, // None unless message from me
+}
+pub async fn send_message_handler(
+    user_id: String,
+    body: SendMessageRequest,
+    users: Users,
+) -> WebResult {
+    // Get user from Users
+    let message_repo = TestMessageRepo::new();
+	return Ok(reply(
+		String::from("User ID not found"),
+		{},
+		StatusCode::BAD_REQUEST,
+	))
+    Ok(Box::new(warp::reply()))
 }
 
-/// Our state of currently connected users.
-///
-/// - Key is their id
-/// - Value is a sender of `Message`
-type Users = Arc<Mutex<HashMap<usize, mpsc::UnboundedSender<Message>>>>;
-
-pub async fn chat_send_handler(my_id: usize, msg: String, users: Users) -> WebResult {
-	user_message(my_id, msg, &users);
-	Ok(Box::new(warp::reply()))
+pub async fn stream_recv_handler(user_id: String, users: Users) -> WebResult {
+    // reply using server-sent events
+    let stream = user_connected(user_id, users);
+    Ok(Box::new(sse::reply(sse::keep_alive().stream(stream))))
 }
 
-pub async fn chat_recv_handler(users: Users) -> WebResult {
-	// reply using server-sent events
-	let stream = user_connected(users);
-	Ok(Box::new(sse::reply(sse::keep_alive().stream(stream))))
+#[derive(Serialize)]
+struct FetchMessagesResponse {
+    pub user_id: String,
+    pub messages: Vec<Message>,
+}
+pub async fn fetch_messages_handler(user_id: String) -> WebResult {
+    Ok(reply(
+        String::from("User Fetched"),
+        &FetchMessagesResponse {
+            user_id,
+            messages: vec![],
+        },
+        StatusCode::OK,
+    ))
+}
+
+pub async fn stream_register_handler(user_id: String, users: &Users) -> WebResult {
+    users.lock().unwrap().insert(
+        user_id.clone(),
+        Client {
+            user_id,
+            sender: None,
+        },
+    );
+
+    Ok(reply(
+        String::from("User registered for chat"),
+        {},
+        StatusCode::OK,
+    ))
 }
 
 fn user_connected(
+    user_id: String,
     users: Users,
 ) -> impl Stream<Item = Result<Event, warp::Error>> + Send + 'static {
-    // Use a counter to assign a new unique ID for this user.
-    let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
-
-    eprintln!("new chat user: {}", my_id);
-
     // Use an unbounded channel to handle buffering and flushing of messages
     // to the event source...
     let (tx, rx) = mpsc::unbounded_channel();
     let rx = UnboundedReceiverStream::new(rx);
 
-    tx.send(Message::UserId(my_id))
-        // rx is right above, so this cannot fail
-        .unwrap();
-
     // Save the sender in our list of connected users.
-    users.lock().unwrap().insert(my_id, tx);
+    if let Some(client) = users.lock().unwrap().get_mut(&user_id) {
+        client.clone().sender = Some(tx);
+        users.lock().unwrap().insert(user_id, client.to_owned());
+    }
 
-    // Convert messages into Server-Sent Events and return resulting stream.
-    rx.map(|msg| match msg {
-        Message::UserId(my_id) => Ok(Event::default().event("user").data(my_id.to_string())),
-        Message::Reply(reply) => Ok(Event::default().data(reply)),
+    rx.map(|msg| {
+        Ok(Event::default()
+            .json_data(msg)
+            .expect("Message could not be serialized"))
     })
-}
-
-pub fn user_message(my_id: usize, msg: String, users: &Users) {
-    let new_msg = format!("<User#{}>: {}", my_id, msg);
-
-    // New message from this user, send it to everyone else (except same uid)...
-    //
-    // We use `retain` instead of a for loop so that we can reap any user that
-    // appears to have disconnected.
-    users.lock().unwrap().retain(|uid, tx| {
-        if my_id == *uid {
-            // don't send to same user, but do retain
-            true
-        } else {
-            // If not `is_ok`, the SSE stream is gone, and so don't retain
-            tx.send(Message::Reply(new_msg.clone())).is_ok()
-        }
-    });
 }
